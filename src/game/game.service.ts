@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { Chess } from 'chess.js';
 import { eq } from 'drizzle-orm';
 import { DrizzleService } from 'src/database/drizzle.service';
@@ -9,13 +9,14 @@ export class GameService {
   constructor(private readonly drizzleService: DrizzleService) {}
   private activeGames: Map<string, Chess> = new Map();
 
-  async createGame() {
+  async createGame(userId: string) {
     const chess = new Chess();
     const [game] = await this.drizzleService.db
       .insert(games)
+      //@ts-ignore
       .values({
-        status: 'waiting',
         fen: chess.fen(),
+        whitePlayerId: userId,
       })
       .returning();
 
@@ -23,7 +24,7 @@ export class GameService {
     return game;
   }
 
-  async joinGame(gameId: string, playerId: string) {
+  async joinGame(gameId: string, userId: string) {
     const game = await this.drizzleService.db.query.games.findFirst({
       where: eq(games.id, parseInt(gameId, 10)),
     });
@@ -32,31 +33,58 @@ export class GameService {
       throw new Error('Game not found');
     }
 
+    if (game.status !== 'waiting') {
+      throw new Error('Game is not available to join');
+    }
+
+    if (game.whitePlayerId === userId) {
+      throw new Error('You are already in this game');
+    }
+
     if (!this.activeGames.has(gameId)) {
       const chess = new Chess();
       chess.load(game.fen);
       this.activeGames.set(game.id.toString(), chess);
     }
 
-    // Update game status and player assignment logic here
-
-    await this.drizzleService.db
+    const updatedGame = await this.drizzleService.db
       .update(games)
       .set({
+        //@ts-ignore
         status: 'active',
-        ...(game.whitePlayerId
-          ? { blackPlayerId: playerId }
-          : { whitePlayerId: playerId }),
+        blackPlayerId: userId,
       })
-      .where(eq(games.id, parseInt(gameId, 10)));
+      .where(eq(games.id, parseInt(gameId, 10)))
+      .returning();
 
-    return game;
+    return updatedGame[0];
   }
 
-  async makeMove(gameId: string, playerId: string, move: string) {
+  async makeMove(gameId: string, userId: string, move: string) {
+    const game = await this.drizzleService.db.query.games.findFirst({
+      where: eq(games.id, parseInt(gameId, 10)),
+    });
+
+    if (!game) {
+      throw new Error('Game not found');
+    }
+
+    if (game.status !== 'active') {
+      throw new Error('Game is not active');
+    }
+
     const chess = this.activeGames.get(gameId);
     if (!chess) {
-      throw new Error('Game not found');
+      throw new Error('Game not found in memory');
+    }
+
+    // Validate if it's player's turn
+    const isWhiteTurn = chess.turn() === 'w';
+    if (
+      (isWhiteTurn && game.whitePlayerId !== userId) ||
+      (!isWhiteTurn && game.blackPlayerId !== userId)
+    ) {
+      throw new UnauthorizedException('Not your turn');
     }
 
     try {
@@ -64,23 +92,27 @@ export class GameService {
 
       // Save move to database
       await this.drizzleService.db.insert(moves).values({
-        gameId,
-        playerId,
+        //@ts-ignore
+        gameId: parseInt(gameId, 10),
+        playerId: userId,
         move,
         fen: chess.fen(),
-      } as any);
+      });
 
       // Update game state
-      await this.drizzleService.db
+      const updatedGame = await this.drizzleService.db
         .update(games)
         .set({
           fen: chess.fen(),
+          //@ts-ignore
           status: chess.isGameOver() ? 'completed' : 'active',
+          winner: this.getWinner(chess, game),
         })
-        .where(eq(games.id, parseInt(gameId, 10)));
+        .where(eq(games.id, parseInt(gameId, 10)))
+        .returning();
 
       return {
-        fen: chess.fen(),
+        ...updatedGame[0],
         isCheck: chess.isCheck(),
         isCheckmate: chess.isCheckmate(),
         isDraw: chess.isDraw(),
@@ -92,6 +124,16 @@ export class GameService {
     }
   }
 
+  private getWinner(chess: Chess, game: any) {
+    if (chess.isCheckmate()) {
+      return chess.turn() === 'w' ? game.blackPlayerId : game.whitePlayerId;
+    }
+    if (chess.isDraw()) {
+      return 'draw';
+    }
+    return null;
+  }
+
   async getGame(gameId: string) {
     const game = await this.drizzleService.db.query.games.findFirst({
       where: eq(games.id, parseInt(gameId, 10)),
@@ -99,6 +141,18 @@ export class GameService {
 
     if (!game) {
       throw new Error('Game not found');
+    }
+
+    const chess = this.activeGames.get(gameId);
+    if (chess) {
+      return {
+        ...game,
+        isCheck: chess.isCheck(),
+        isCheckmate: chess.isCheckmate(),
+        isDraw: chess.isDraw(),
+        isGameOver: chess.isGameOver(),
+        turn: chess.turn(),
+      };
     }
 
     return game;

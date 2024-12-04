@@ -1,5 +1,9 @@
 import { JwtPayload } from './../../node_modules/@types/jsonwebtoken/index.d';
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { eq, getTableColumns, or } from 'drizzle-orm';
 import * as bcrypt from 'bcrypt';
@@ -51,7 +55,22 @@ export class AuthService {
   }
 
   async register(userData: RegisterDto) {
-    const hashedPassword = (await bcrypt.hash(userData.password, 10)) as string;
+    const existingUser = await this.drizzleService.db
+      .select()
+      .from(users)
+      .where(
+        or(
+          eq(users.email, userData.email),
+          eq(users.username, userData.username),
+        ),
+      )
+      .limit(1);
+
+    if (existingUser.length > 0) {
+      throw new ConflictException('User already exists');
+    }
+
+    const hashedPassword = await bcrypt.hash(userData.password, 10);
 
     const newUser = await this.drizzleService.db
       .insert(users)
@@ -59,7 +78,7 @@ export class AuthService {
         ...userData,
         password: hashedPassword,
         role: 'user',
-      } as any)
+      })
       .returning();
 
     return {

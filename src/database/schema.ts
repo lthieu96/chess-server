@@ -5,9 +5,15 @@ import {
   timestamp,
   integer,
   pgEnum,
+  boolean,
 } from 'drizzle-orm/pg-core';
 
 export const roleEnum = pgEnum('role', ['user', 'admin', 'guest']);
+export const gameStatusEnum = pgEnum('game_status', [
+  'waiting',
+  'active',
+  'completed',
+]);
 
 export const users = pgTable('users', {
   id: serial('id').primaryKey(),
@@ -22,20 +28,28 @@ export const users = pgTable('users', {
 
 export const games = pgTable('games', {
   id: serial('id').primaryKey(),
-  status: text('status').notNull(),
+  status: gameStatusEnum('status').notNull().default('waiting'),
   fen: text('fen').notNull(),
   whitePlayerId: text('white_player_id'),
   blackPlayerId: text('black_player_id'),
+  winner: text('winner'),
+  isCheck: boolean('is_check').default(false),
+  isCheckmate: boolean('is_checkmate').default(false),
+  isDraw: boolean('is_draw').default(false),
+  turn: text('turn').notNull().default('w'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });
 
 export const moves = pgTable('moves', {
   id: serial('id').primaryKey(),
-  gameId: serial('game_id').references(() => games.id),
+  gameId: text('game_id'),
   playerId: text('player_id'),
-  move: text('move'),
+  move: text('move').notNull(),
   fen: text('fen').notNull(),
+  isCheck: boolean('is_check').default(false),
+  isCheckmate: boolean('is_checkmate').default(false),
+  isDraw: boolean('is_draw').default(false),
   createdAt: timestamp('created_at').defaultNow(),
 });
 
