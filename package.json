@@ -18,7 +18,9 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
-    "dev-no-check": "cross-env TS_NODE_TRANSPILE_ONLY=true nest start --watch"
+    "dev-no-check": "cross-env TS_NODE_TRANSPILE_ONLY=true nest start --watch",
+    "drizzle:migrate": "drizzle-kit migrate",
+    "drizzle:studio": "drizzle-kit studio"
   },
   "dependencies": {
     "@nestjs/common": "^10.0.0",
