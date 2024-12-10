@@ -7,62 +7,75 @@ import { games, moves } from 'src/database/schema';
 @Injectable()
 export class GameService {
   constructor(private readonly drizzleService: DrizzleService) {}
-  private activeGames: Map<string, Chess> = new Map();
+  private activeGames: Map<number, Chess> = new Map();
 
   async createGame(userId: string) {
     const chess = new Chess();
     const [game] = await this.drizzleService.db
       .insert(games)
-      //@ts-ignore
       .values({
         fen: chess.fen(),
         whitePlayerId: userId,
       })
       .returning();
 
-    this.activeGames.set(game.id.toString(), chess);
+    this.activeGames.set(game.id, chess);
     return game;
   }
 
-  async joinGame(gameId: string, userId: string) {
+  async joinGame(gameId: number, userId: string) {
     const game = await this.drizzleService.db.query.games.findFirst({
-      where: eq(games.id, parseInt(gameId, 10)),
+      where: eq(games.id, gameId),
     });
 
     if (!game) {
       throw new Error('Game not found');
     }
 
-    if (game.status !== 'waiting') {
+    if (game.status !== 'waiting' && game.status !== 'active') {
       throw new Error('Game is not available to join');
     }
 
-    if (game.whitePlayerId === userId) {
-      throw new Error('You are already in this game');
+    if (game.whitePlayerId == userId || game.blackPlayerId == userId) {
+      if (!this.activeGames.has(gameId)) {
+        const chess = new Chess();
+        chess.load(game.fen);
+        this.activeGames.set(game.id, chess);
+      }
+
+      const chess = this.activeGames.get(gameId)!;
+      console.log();
+      return {
+        ...game,
+        isCheck: chess.isCheck(),
+        isCheckmate: chess.isCheckmate(),
+        isDraw: chess.isDraw(),
+        isGameOver: chess.isGameOver(),
+        turn: chess.turn(),
+      };
     }
 
     if (!this.activeGames.has(gameId)) {
       const chess = new Chess();
       chess.load(game.fen);
-      this.activeGames.set(game.id.toString(), chess);
+      this.activeGames.set(game.id, chess);
     }
 
     const updatedGame = await this.drizzleService.db
       .update(games)
       .set({
-        //@ts-ignore
         status: 'active',
         blackPlayerId: userId,
       })
-      .where(eq(games.id, parseInt(gameId, 10)))
+      .where(eq(games.id, gameId))
       .returning();
 
     return updatedGame[0];
   }
 
-  async makeMove(gameId: string, userId: string, move: string) {
+  async makeMove(gameId: number, userId: string, move: string) {
     const game = await this.drizzleService.db.query.games.findFirst({
-      where: eq(games.id, parseInt(gameId, 10)),
+      where: eq(games.id, gameId),
     });
 
     if (!game) {
@@ -80,9 +93,10 @@ export class GameService {
 
     // Validate if it's player's turn
     const isWhiteTurn = chess.turn() === 'w';
+
     if (
-      (isWhiteTurn && game.whitePlayerId !== userId) ||
-      (!isWhiteTurn && game.blackPlayerId !== userId)
+      (isWhiteTurn && game.whitePlayerId !== userId.toString()) ||
+      (!isWhiteTurn && game.blackPlayerId !== userId.toString())
     ) {
       throw new UnauthorizedException('Not your turn');
     }
@@ -92,8 +106,7 @@ export class GameService {
 
       // Save move to database
       await this.drizzleService.db.insert(moves).values({
-        //@ts-ignore
-        gameId: parseInt(gameId, 10),
+        gameId,
         playerId: userId,
         move,
         fen: chess.fen(),
@@ -104,11 +117,10 @@ export class GameService {
         .update(games)
         .set({
           fen: chess.fen(),
-          //@ts-ignore
           status: chess.isGameOver() ? 'completed' : 'active',
           winner: this.getWinner(chess, game),
         })
-        .where(eq(games.id, parseInt(gameId, 10)))
+        .where(eq(games.id, gameId))
         .returning();
 
       return {
@@ -134,9 +146,9 @@ export class GameService {
     return null;
   }
 
-  async getGame(gameId: string) {
+  async getGame(gameId: number) {
     const game = await this.drizzleService.db.query.games.findFirst({
-      where: eq(games.id, parseInt(gameId, 10)),
+      where: eq(games.id, gameId),
     });
 
     if (!game) {

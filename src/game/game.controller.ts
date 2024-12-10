@@ -34,7 +34,7 @@ export class GameController {
   @Post(':id/join')
   @ApiOperation({ summary: 'Join an existing game' })
   @ApiResponse({ status: 200, description: 'Joined game successfully' })
-  async joinGame(@Param('id') id: string, @ActiveUser('sub') userId: string) {
+  async joinGame(@Param('id') id: number, @ActiveUser('sub') userId: string) {
     try {
       return await this.gameService.joinGame(id, userId);
     } catch (error) {
@@ -46,7 +46,7 @@ export class GameController {
   @ApiOperation({ summary: 'Make a move in a game' })
   @ApiResponse({ status: 200, description: 'Move made successfully' })
   async makeMove(
-    @Param('id') id: string,
+    @Param('id') id: number,
     @ActiveUser('sub') userId: string,
     @Body() moveDto: MoveDto,
   ) {
@@ -63,7 +63,7 @@ export class GameController {
     status: 200,
     description: 'Game details retrieved successfully',
   })
-  async getGame(@Param('id') id: string) {
+  async getGame(@Param('id') id: number) {
     try {
       return await this.gameService.getGame(id);
     } catch (error) {

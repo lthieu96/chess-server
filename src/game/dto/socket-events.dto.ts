@@ -3,13 +3,13 @@ import { IsString, IsNotEmpty } from 'class-validator';
 export class JoinGameDto {
   @IsString()
   @IsNotEmpty()
-  gameId: string;
+  gameId: number;
 }
 
 export class MoveGameDto {
   @IsString()
   @IsNotEmpty()
-  gameId: string;
+  gameId: number;
 
   @IsString()
   @IsNotEmpty()

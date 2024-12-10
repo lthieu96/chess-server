@@ -43,7 +43,7 @@ export const games = pgTable('games', {
 
 export const moves = pgTable('moves', {
   id: serial('id').primaryKey(),
-  gameId: text('game_id'),
+  gameId: integer('game_id'),
   playerId: text('player_id'),
   move: text('move').notNull(),
   fen: text('fen').notNull(),

@@ -10,11 +10,7 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { GameService } from './game.service';
-import {
-  UnauthorizedException,
-  UseGuards,
-  ValidationPipe,
-} from '@nestjs/common';
+import { Logger, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { JoinGameDto, MoveGameDto } from './dto/socket-events.dto';
 import { WsJwtGuard } from '../auth/guards/ws-jwt.guard';
@@ -28,9 +24,10 @@ import { WsJwtGuard } from '../auth/guards/ws-jwt.guard';
 })
 export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
-  server: Server;
+  server!: Server;
 
   private userSockets: Map<string, Set<string>> = new Map();
+  private readonly logger = new Logger(GameGateway.name);
 
   constructor(
     private readonly gameService: GameService,
@@ -39,7 +36,8 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   async handleConnection(client: Socket) {
     try {
-      const token = client.handshake.auth.token;
+      const token =
+        client.handshake.auth.token || client.handshake.headers.token;
       if (!token) {
         throw new UnauthorizedException('No token provided');
       }
@@ -70,22 +68,9 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @UseGuards(WsJwtGuard)
-  @SubscribeMessage('createGame')
-  async handleCreateGame(@ConnectedSocket() client: Socket) {
-    try {
-      const game = await this.gameService.createGame(client.data.userId);
-      client.join(game.id.toString());
-      this.server.to(game.id.toString()).emit('gameState', game);
-      return { event: 'createGame', data: game };
-    } catch (error) {
-      throw new WsException(error.message);
-    }
-  }
-
-  @UseGuards(WsJwtGuard)
   @SubscribeMessage('joinGame')
   async handleJoinGame(
-    @MessageBody(new ValidationPipe()) joinGameDto: JoinGameDto,
+    @MessageBody() joinGameDto: JoinGameDto,
     @ConnectedSocket() client: Socket,
   ) {
     try {
@@ -93,8 +78,8 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
         joinGameDto.gameId,
         client.data.userId,
       );
-      client.join(joinGameDto.gameId);
-      this.server.to(joinGameDto.gameId).emit('gameState', game);
+      client.join(joinGameDto.gameId.toString());
+      this.server.to(joinGameDto.gameId.toString()).emit('gameState', game);
       return { event: 'joinGame', data: game };
     } catch (error) {
       throw new WsException(error.message);
@@ -104,7 +89,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @UseGuards(WsJwtGuard)
   @SubscribeMessage('move')
   async handleMove(
-    @MessageBody(new ValidationPipe()) moveGameDto: MoveGameDto,
+    @MessageBody() moveGameDto: MoveGameDto,
     @ConnectedSocket() client: Socket,
   ) {
     try {
@@ -113,10 +98,10 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
         client.data.userId,
         moveGameDto.move,
       );
-      this.server.to(moveGameDto.gameId).emit('gameState', game);
+      this.server.to(moveGameDto.gameId.toString()).emit('gameState', game);
 
       if (game.isGameOver) {
-        this.server.to(moveGameDto.gameId).emit('gameOver', {
+        this.server.to(moveGameDto.gameId.toString()).emit('gameOver', {
           winner: game.winner,
           reason: this.getGameOverReason(game),
         });
@@ -124,6 +109,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
       return { event: 'move', data: game };
     } catch (error) {
+      this.logger.error('Error handling move:', error.message);
       throw new WsException(error.message);
     }
   }
