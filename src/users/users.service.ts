@@ -38,4 +38,23 @@ export class UsersService {
   remove(id: number) {
     return `This action removes a #${id} user`;
   }
+
+  async getPlayerById(id: number) {
+    const player = await this.drizzleService.db
+      .select({
+        id: userSchema.id,
+        username: userSchema.username,
+        rating: userSchema.rating,
+      })
+      .from(userSchema)
+      .where(eq(userSchema.id, id))
+      .limit(1)
+      .then((results) => results[0]);
+
+    if (!player) {
+      throw new NotFoundException(`Player #${id} not found`);
+    }
+
+    return player;
+  }
 }

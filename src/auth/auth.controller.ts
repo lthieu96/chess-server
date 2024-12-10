@@ -13,6 +13,7 @@ import { Public } from './guards/public.guard';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { ActiveUser } from './guards/active-user.guard';
 
+@Public()
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
@@ -22,7 +23,6 @@ export class AuthController {
     return this.authService.register(userData);
   }
 
-  @Public()
   @UseGuards(AuthGuard('local'))
   @Post('login')
   async login(@Request() req) {
