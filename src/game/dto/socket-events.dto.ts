@@ -1,17 +1,23 @@
-import { IsString, IsNotEmpty } from 'class-validator';
+import { IsString, IsNotEmpty, IsNumber } from 'class-validator';
 
 export class JoinGameDto {
-  @IsString()
+  @IsNumber()
   @IsNotEmpty()
   gameId: number;
 }
 
 export class MoveGameDto {
-  @IsString()
+  @IsNumber()
   @IsNotEmpty()
   gameId: number;
 
   @IsString()
   @IsNotEmpty()
   move: string;
+}
+
+export class ResignGameDto {
+  @IsNumber()
+  @IsNotEmpty()
+  gameId: number;
 }

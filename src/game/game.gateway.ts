@@ -12,7 +12,12 @@ import { Server, Socket } from 'socket.io';
 import { GameService } from './game.service';
 import { Logger, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { JoinGameDto, MoveGameDto } from './dto/socket-events.dto';
+import {
+  JoinGameDto,
+  MoveGameDto,
+  ResignGameDto,
+} from './dto/socket-events.dto';
+import { CheckTimeDto } from './dto/check-time.dto';
 import { WsJwtGuard } from '../auth/guards/ws-jwt.guard';
 
 @WebSocketGateway({
@@ -82,6 +87,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       this.server.to(joinGameDto.gameId.toString()).emit('gameState', game);
       return { event: 'joinGame', data: game };
     } catch (error) {
+      this.logger.error('Error joining game:', error.message);
       throw new WsException(error.message);
     }
   }
@@ -98,28 +104,103 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
         client.data.userId,
         moveGameDto.move,
       );
+
+      // Emit game state to all players in the room
       this.server.to(moveGameDto.gameId.toString()).emit('gameState', game);
 
-      if (game.isGameOver) {
-        this.server.to(moveGameDto.gameId.toString()).emit('gameOver', {
+      // If game is over, emit detailed game over event
+      if (game.status === 'completed') {
+        const gameOverEvent = {
           winner: game.winner,
           reason: this.getGameOverReason(game),
-        });
+          finalState: game,
+        };
+        this.server
+          .to(moveGameDto.gameId.toString())
+          .emit('gameOver', gameOverEvent);
       }
 
-      return { event: 'move', data: game };
+      return {
+        event: 'move',
+        data: {
+          ...game,
+          currentTime: new Date().toISOString(),
+        },
+      };
     } catch (error) {
       this.logger.error('Error handling move:', error.message);
       throw new WsException(error.message);
     }
   }
 
+  @SubscribeMessage('resign')
+  async handleResign(
+    @MessageBody() resignGameDto: ResignGameDto,
+    @ConnectedSocket() client: Socket,
+  ) {
+    try {
+      const game = await this.gameService.resignGame(
+        resignGameDto.gameId,
+        client.data.userId,
+      );
+      this.server.to(resignGameDto.gameId.toString()).emit('gameOver', {
+        winner: game.winner,
+        reason: 'Player resigned',
+      });
+      return { event: 'resign', data: game };
+    } catch (error) {
+      this.logger.error('Error handling resignation:', error.message);
+      throw new WsException(error.message);
+    }
+  }
+
+  @UseGuards(WsJwtGuard)
+  @SubscribeMessage('checkTime')
+  async handleCheckTime(
+    @MessageBody() checkTimeDto: CheckTimeDto,
+    @ConnectedSocket() client: Socket,
+  ) {
+    try {
+      const gameState = await this.gameService.checkTime(checkTimeDto.gameId);
+
+      // If time has expired, notify all players
+      if (gameState.timeExpired) {
+        const gameOverEvent = {
+          winner: gameState.winner,
+          reason: 'timeout',
+          finalState: gameState,
+        };
+        this.server
+          .to(checkTimeDto.gameId.toString())
+          .emit('gameOver', gameOverEvent);
+      }
+
+      // Send updated time information to all players
+      this.server.to(checkTimeDto.gameId.toString()).emit('timeUpdate', {
+        gameId: checkTimeDto.gameId,
+        whiteTimeRemaining: gameState.whiteTimeRemaining,
+        blackTimeRemaining: gameState.blackTimeRemaining,
+        currentTime: gameState.currentTime,
+      });
+
+      return { event: 'checkTime', data: gameState };
+    } catch (error) {
+      this.logger.error('Error checking time:', error.message);
+      throw new WsException(error.message);
+    }
+  }
+
   private getGameOverReason(game: any): string {
-    if (game.isCheckmate) return 'checkmate';
-    if (game.isDraw) return 'draw';
-    if (game.isStalemate) return 'stalemate';
-    if (game.isThreefoldRepetition) return 'threefold repetition';
-    if (game.isInsufficientMaterial) return 'insufficient material';
-    return 'unknown';
+    if (game.isCheckmate) {
+      return 'checkmate';
+    } else if (game.isDraw) {
+      return 'draw';
+    } else if (
+      game.status === 'completed' &&
+      (game.whiteTimeRemaining <= 0 || game.blackTimeRemaining <= 0)
+    ) {
+      return 'timeout';
+    }
+    return 'resignation';
   }
 }

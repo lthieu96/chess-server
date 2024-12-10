@@ -30,13 +30,18 @@ export const games = pgTable('games', {
   id: serial('id').primaryKey(),
   status: gameStatusEnum('status').notNull().default('waiting'),
   fen: text('fen').notNull(),
-  whitePlayerId: text('white_player_id'),
-  blackPlayerId: text('black_player_id'),
-  winner: text('winner'),
+  whitePlayerId: integer('white_player_id'),
+  blackPlayerId: integer('black_player_id'),
+  winner: integer('winner'),
   isCheck: boolean('is_check').default(false),
   isCheckmate: boolean('is_checkmate').default(false),
   isDraw: boolean('is_draw').default(false),
   turn: text('turn').notNull().default('w'),
+  timeControl: integer('time_control').default(600), // 10 minutes in seconds
+  increment: integer('increment').default(5), // 5 seconds increment per move
+  whiteTimeRemaining: integer('white_time_remaining'),
+  blackTimeRemaining: integer('black_time_remaining'),
+  lastMoveTime: timestamp('last_move_time'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });
@@ -44,7 +49,7 @@ export const games = pgTable('games', {
 export const moves = pgTable('moves', {
   id: serial('id').primaryKey(),
   gameId: integer('game_id'),
-  playerId: text('player_id'),
+  playerId: integer('player_id'),
   move: text('move').notNull(),
   fen: text('fen').notNull(),
   isCheck: boolean('is_check').default(false),

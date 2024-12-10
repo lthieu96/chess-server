@@ -12,6 +12,7 @@ import { GameService } from './game.service';
 import { ActiveUser } from 'src/auth/guards/active-user.guard';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { MoveDto } from './dto/move.dto';
+import { CreateGameDto } from './dto/create-game.dto';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 
 @ApiTags('games')
@@ -23,9 +24,12 @@ export class GameController {
   @Post()
   @ApiOperation({ summary: 'Create a new game' })
   @ApiResponse({ status: 201, description: 'Game created successfully' })
-  async create(@ActiveUser('sub') userId: string) {
+  async create(
+    @ActiveUser('sub') userId: number,
+    @Body() createGameDto: CreateGameDto,
+  ) {
     try {
-      return await this.gameService.createGame(userId);
+      return await this.gameService.createGame(userId, createGameDto);
     } catch (error) {
       throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
     }
@@ -34,7 +38,7 @@ export class GameController {
   @Post(':id/join')
   @ApiOperation({ summary: 'Join an existing game' })
   @ApiResponse({ status: 200, description: 'Joined game successfully' })
-  async joinGame(@Param('id') id: number, @ActiveUser('sub') userId: string) {
+  async joinGame(@Param('id') id: number, @ActiveUser('sub') userId: number) {
     try {
       return await this.gameService.joinGame(id, userId);
     } catch (error) {
@@ -47,7 +51,7 @@ export class GameController {
   @ApiResponse({ status: 200, description: 'Move made successfully' })
   async makeMove(
     @Param('id') id: number,
-    @ActiveUser('sub') userId: string,
+    @ActiveUser('sub') userId: number,
     @Body() moveDto: MoveDto,
   ) {
     try {
