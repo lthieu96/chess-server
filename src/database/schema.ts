@@ -36,6 +36,7 @@ export const games = pgTable('games', {
   isCheck: boolean('is_check').default(false),
   isCheckmate: boolean('is_checkmate').default(false),
   isDraw: boolean('is_draw').default(false),
+  isPrivate: boolean('is_private').default(false),
   turn: text('turn').notNull().default('w'),
   timeControl: integer('time_control').default(600), // 10 minutes in seconds
   increment: integer('increment').default(5), // 5 seconds increment per move

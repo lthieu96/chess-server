@@ -21,3 +21,34 @@ export class ResignGameDto {
   @IsNotEmpty()
   gameId: number;
 }
+
+export class DrawOfferDto {
+  @IsNumber()
+  @IsNotEmpty()
+  gameId: number;
+}
+
+export class DrawResponseDto {
+  @IsNumber()
+  @IsNotEmpty()
+  gameId: number;
+
+  @IsNotEmpty()
+  accept: boolean;
+}
+
+export class CreateGameDto {
+  timeControl?: number;
+  increment?: number;
+  isPrivate?: boolean;
+}
+
+export class ChatMessageDto {
+  @IsNumber()
+  @IsNotEmpty()
+  gameId: number;
+
+  @IsString()
+  @IsNotEmpty()
+  message: string;
+}

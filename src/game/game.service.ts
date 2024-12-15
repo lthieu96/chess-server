@@ -1,21 +1,27 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { Chess } from 'chess.js';
-import { eq } from 'drizzle-orm';
+import { eq, and, or } from 'drizzle-orm';
 import { DrizzleService } from 'src/database/drizzle.service';
-import { games, moves } from 'src/database/schema';
+import { games, moves, users } from 'src/database/schema';
 
 @Injectable()
 export class GameService {
   constructor(private readonly drizzleService: DrizzleService) {}
   private activeGames: Map<number, Chess> = new Map();
+  private drawOffers: Map<number, number> = new Map(); // gameId -> userId who offered draw
 
   async createGame(
     userId: number,
-    options: { timeControl?: number; increment?: number } = {},
+    options: {
+      timeControl?: number;
+      increment?: number;
+      isPrivate?: boolean;
+    } = {},
   ) {
     const chess = new Chess();
     const timeControl = options.timeControl || 600; // Default 10 minutes
     const increment = options.increment ?? 5; // Default 5 seconds increment, allow 0
+    const isPrivate = options.isPrivate ?? false; // Default public game
 
     const [game] = await this.drizzleService.db
       .insert(games)
@@ -24,6 +30,7 @@ export class GameService {
         whitePlayerId: userId,
         timeControl,
         increment,
+        isPrivate,
         whiteTimeRemaining: timeControl,
         blackTimeRemaining: timeControl,
       })
@@ -275,6 +282,92 @@ export class GameService {
     };
   }
 
+  async offerDraw(gameId: number, userId: number) {
+    const game = await this.drizzleService.db.query.games.findFirst({
+      where: eq(games.id, gameId),
+    });
+
+    if (!game) {
+      throw new Error('Game not found');
+    }
+
+    if (game.status !== 'active') {
+      throw new Error('Game is not active');
+    }
+
+    if (game.whitePlayerId !== userId && game.blackPlayerId !== userId) {
+      throw new Error('User is not a player in this game');
+    }
+
+    // Store the draw offer
+    this.drawOffers.set(gameId, userId);
+
+    return game;
+  }
+
+  async respondToDraw(gameId: number, userId: number, accept: boolean) {
+    const game = await this.drizzleService.db.query.games.findFirst({
+      where: eq(games.id, gameId),
+    });
+
+    if (!game) {
+      throw new Error('Game not found');
+    }
+
+    if (game.status !== 'active') {
+      throw new Error('Game is not active');
+    }
+
+    if (game.whitePlayerId !== userId && game.blackPlayerId !== userId) {
+      throw new Error('User is not a player in this game');
+    }
+
+    const offeringUserId = this.drawOffers.get(gameId);
+    if (!offeringUserId || offeringUserId === userId) {
+      throw new Error('No valid draw offer to respond to');
+    }
+
+    // Clear the draw offer
+    this.drawOffers.delete(gameId);
+
+    if (accept) {
+      // Update game status to draw
+      const [updatedGame] = await this.drizzleService.db
+        .update(games)
+        .set({
+          status: 'completed',
+          winner: null, // null winner indicates draw
+          isDraw: true,
+        })
+        .where(eq(games.id, gameId))
+        .returning();
+
+      return updatedGame;
+    }
+
+    return game;
+  }
+
+  async getPublicRooms() {
+    const publicGames = await this.drizzleService.db
+      .select({
+        game: games,
+        creator: {
+          id: users.id,
+          username: users.username,
+          rating: users.rating,
+        },
+      })
+      .from(games)
+      .leftJoin(users, eq(games.whitePlayerId, users.id))
+      .where(and(eq(games.status, 'waiting'), eq(games.isPrivate, false)));
+
+    return publicGames.map(({ game, creator }) => ({
+      ...game,
+      creator,
+    }));
+  }
+
   private getWinner(chess: Chess, game: any) {
     if (chess.isCheckmate()) {
       return chess.turn() === 'w' ? game.blackPlayerId : game.whitePlayerId;
@@ -307,5 +400,49 @@ export class GameService {
     }
 
     return game;
+  }
+
+  async handleDisconnect(userId: number) {
+    // Find all games where the user is a player
+    const userGames = await this.drizzleService.db.query.games.findMany({
+      where: or(
+        eq(games.whitePlayerId, userId),
+        eq(games.blackPlayerId, userId),
+      ),
+    });
+
+    for (const game of userGames) {
+      if (game.status === 'waiting') {
+        // If game is waiting and creator disconnects, delete the game
+        if (game.whitePlayerId === userId) {
+          await this.drizzleService.db
+            .delete(games)
+            .where(eq(games.id, game.id));
+
+          // Clean up the chess instance
+          this.activeGames.delete(game.id);
+        }
+      } else if (game.status === 'active') {
+        // If game is active, other player wins
+        const winner =
+          game.whitePlayerId === userId
+            ? game.blackPlayerId
+            : game.whitePlayerId;
+
+        const [updatedGame] = await this.drizzleService.db
+          .update(games)
+          .set({
+            status: 'completed',
+            winner: winner,
+          })
+          .where(eq(games.id, game.id))
+          .returning();
+
+        return {
+          game: updatedGame,
+          type: 'forfeit',
+        };
+      }
+    }
   }
 }

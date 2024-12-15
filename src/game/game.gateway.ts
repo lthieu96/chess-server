@@ -16,6 +16,10 @@ import {
   JoinGameDto,
   MoveGameDto,
   ResignGameDto,
+  DrawOfferDto,
+  DrawResponseDto,
+  CreateGameDto,
+  ChatMessageDto,
 } from './dto/socket-events.dto';
 import { CheckTimeDto } from './dto/check-time.dto';
 import { WsJwtGuard } from '../auth/guards/ws-jwt.guard';
@@ -60,13 +64,31 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 
-  handleDisconnect(client: Socket) {
+  async handleDisconnect(client: Socket) {
     if (client.data.userId) {
       const userSockets = this.userSockets.get(client.data.userId);
       if (userSockets) {
         userSockets.delete(client.id);
+
+        // Only handle game disconnection if this was the user's last socket connection
         if (userSockets.size === 0) {
           this.userSockets.delete(client.data.userId);
+
+          // Handle game disconnection
+          const result = await this.gameService.handleDisconnect(
+            client.data.userId,
+          );
+
+          if (result) {
+            const { game, type } = result;
+
+            // Notify players about game over due to disconnect
+            this.server.to(game.id.toString()).emit('gameOver', {
+              winner: game.winner,
+              reason: 'Player disconnected',
+              finalState: game,
+            });
+          }
         }
       }
     }
@@ -186,6 +208,106 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return { event: 'checkTime', data: gameState };
     } catch (error) {
       this.logger.error('Error checking time:', error.message);
+      throw new WsException(error.message);
+    }
+  }
+
+  @UseGuards(WsJwtGuard)
+  @SubscribeMessage('offerDraw')
+  async handleDrawOffer(
+    @MessageBody() drawOfferDto: DrawOfferDto,
+    @ConnectedSocket() client: Socket,
+  ) {
+    try {
+      const game = await this.gameService.offerDraw(
+        drawOfferDto.gameId,
+        client.data.userId,
+      );
+
+      // Notify the opponent about the draw offer
+      this.server.to(drawOfferDto.gameId.toString()).emit('drawOffered', {
+        gameId: game.id,
+        offeredBy: client.data.userId,
+      });
+
+      return { event: 'offerDraw', data: game };
+    } catch (error) {
+      this.logger.error('Error offering draw:', error.message);
+      throw new WsException(error.message);
+    }
+  }
+
+  @UseGuards(WsJwtGuard)
+  @SubscribeMessage('respondToDraw')
+  async handleDrawResponse(
+    @MessageBody() drawResponseDto: DrawResponseDto,
+    @ConnectedSocket() client: Socket,
+  ) {
+    try {
+      const game = await this.gameService.respondToDraw(
+        drawResponseDto.gameId,
+        client.data.userId,
+        drawResponseDto.accept,
+      );
+
+      if (drawResponseDto.accept) {
+        // If draw was accepted, emit game over event
+        const gameOverEvent = {
+          winner: null,
+          reason: 'Draw by agreement',
+          finalState: game,
+        };
+        this.server
+          .to(drawResponseDto.gameId.toString())
+          .emit('gameOver', gameOverEvent);
+      } else {
+        // If draw was declined, notify players
+        this.server.to(drawResponseDto.gameId.toString()).emit('drawDeclined', {
+          gameId: game.id,
+          declinedBy: client.data.userId,
+        });
+      }
+
+      return { event: 'respondToDraw', data: game };
+    } catch (error) {
+      this.logger.error('Error responding to draw:', error.message);
+      throw new WsException(error.message);
+    }
+  }
+
+  @UseGuards(WsJwtGuard)
+  @SubscribeMessage('chatMessage')
+  async handleChatMessage(
+    @MessageBody() chatMessageDto: ChatMessageDto,
+    @ConnectedSocket() client: Socket,
+  ) {
+    try {
+      // Get the game to verify the sender is a player
+      const game = await this.gameService.getGame(chatMessageDto.gameId);
+
+      if (!game) {
+        throw new WsException('Game not found');
+      }
+
+      // Verify sender is a player in the game
+      if (
+        game.whitePlayerId !== client.data.userId &&
+        game.blackPlayerId !== client.data.userId
+      ) {
+        throw new WsException('You are not a player in this game');
+      }
+
+      // Only send to players in the game
+      this.server.to(chatMessageDto.gameId.toString()).emit('chatMessage', {
+        gameId: game.id,
+        senderId: client.data.userId,
+        message: chatMessageDto.message,
+        timestamp: new Date().toISOString(),
+      });
+
+      return { event: 'chatMessage', data: 'Message sent successfully' };
+    } catch (error) {
+      this.logger.error('Error sending chat message:', error.message);
       throw new WsException(error.message);
     }
   }

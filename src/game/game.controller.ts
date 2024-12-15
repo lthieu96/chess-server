@@ -13,6 +13,7 @@ import { ActiveUser } from 'src/auth/guards/active-user.guard';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { MoveDto } from './dto/move.dto';
 import { CreateGameDto } from './dto/create-game.dto';
+import { GameDto } from './dto/game.dto';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 
 @ApiTags('games')
@@ -58,6 +59,21 @@ export class GameController {
       return await this.gameService.makeMove(id, userId, moveDto.move);
     } catch (error) {
       throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  @Get()
+  @ApiOperation({ summary: 'Get all public rooms' })
+  @ApiResponse({
+    status: 200,
+    description: 'List of public rooms retrieved successfully',
+    type: [GameDto],
+  })
+  async getPublicRooms() {
+    try {
+      return await this.gameService.getPublicRooms();
+    } catch (error) {
+      throw new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 

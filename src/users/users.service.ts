@@ -3,7 +3,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { users as userSchema } from 'src/database/schema';
-import { eq } from 'drizzle-orm';
+import { eq, getTableColumns } from 'drizzle-orm';
 
 @Injectable()
 export class UsersService {
@@ -40,11 +40,12 @@ export class UsersService {
   }
 
   async getPlayerById(id: number) {
+    const { id: playerId, username, rating } = getTableColumns(userSchema);
     const player = await this.drizzleService.db
       .select({
-        id: userSchema.id,
-        username: userSchema.username,
-        rating: userSchema.rating,
+        id: playerId,
+        username,
+        rating,
       })
       .from(userSchema)
       .where(eq(userSchema.id, id))

@@ -50,6 +50,13 @@
       "when": 1733814652265,
       "tag": "0007_make-player-id-to-number",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1734242202678,
+      "tag": "0008_make-games-can-private",
+      "breakpoints": true
     }
   ]
 }
