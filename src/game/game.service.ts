@@ -1,11 +1,11 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, OnApplicationShutdown } from '@nestjs/common';
 import { Chess } from 'chess.js';
 import { eq, and, or } from 'drizzle-orm';
 import { DrizzleService } from 'src/database/drizzle.service';
-import { games, moves, users } from 'src/database/schema';
+import { games, users } from 'src/database/schema';
 
 @Injectable()
-export class GameService {
+export class GameService implements OnApplicationShutdown {
   constructor(private readonly drizzleService: DrizzleService) {}
   private activeGames: Map<number, Chess> = new Map();
   private drawOffers: Map<number, number> = new Map(); // gameId -> userId who offered draw
@@ -140,8 +140,15 @@ export class GameService {
       throw new Error('Game lost on time');
     }
 
-    const chess = this.activeGames.get(gameId)!;
-    chess.load(game.fen);
+    let chess: Chess;
+    if (this.activeGames.has(gameId)) {
+      chess = this.activeGames.get(gameId)!;
+      chess.load(game.fen);
+    } else {
+      chess = new Chess();
+      chess.load(game.fen);
+      this.activeGames.set(game.id, chess);
+    }
 
     try {
       const moveResult = chess.move(move);
@@ -160,6 +167,7 @@ export class GameService {
         isCheckmate: chess.isCheckmate(),
         isDraw: chess.isDraw(),
         lastMoveTime: now,
+        moves: game.moves ? `${game.moves},${move}` : move,
       };
 
       if (currentTurn === 'w') {
@@ -182,16 +190,7 @@ export class GameService {
         .where(eq(games.id, gameId))
         .returning();
 
-      await this.drizzleService.db.insert(moves).values({
-        gameId,
-        playerId: userId,
-        move: moveResult.san,
-        fen: chess.fen(),
-        isCheck: chess.isCheck(),
-        isCheckmate: chess.isCheckmate(),
-      });
-
-      return updatedGame;
+      return { ...updatedGame, lastMoveResult: moveResult };
     } catch (error) {
       throw new Error(error.message);
     }
@@ -444,5 +443,19 @@ export class GameService {
         };
       }
     }
+  }
+
+  async onApplicationShutdown() {
+    // Clean up all incomplete games when server shuts down
+    await this.drizzleService.db
+      .update(games)
+      .set({
+        status: 'completed',
+      })
+      .where(and(or(eq(games.status, 'waiting'), eq(games.status, 'active'))));
+
+    // Clear active games map
+    this.activeGames.clear();
+    this.drawOffers.clear();
   }
 }

@@ -43,24 +43,12 @@ export const games = pgTable('games', {
   whiteTimeRemaining: integer('white_time_remaining'),
   blackTimeRemaining: integer('black_time_remaining'),
   lastMoveTime: timestamp('last_move_time'),
+  moves: text('moves').default(''), // Store moves as comma-separated string
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
-});
-
-export const moves = pgTable('moves', {
-  id: serial('id').primaryKey(),
-  gameId: integer('game_id'),
-  playerId: integer('player_id'),
-  move: text('move').notNull(),
-  fen: text('fen').notNull(),
-  isCheck: boolean('is_check').default(false),
-  isCheckmate: boolean('is_checkmate').default(false),
-  isDraw: boolean('is_draw').default(false),
-  createdAt: timestamp('created_at').defaultNow(),
 });
 
 export const databaseSchema = {
   users,
   games,
-  moves,
 };

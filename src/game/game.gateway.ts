@@ -18,7 +18,6 @@ import {
   ResignGameDto,
   DrawOfferDto,
   DrawResponseDto,
-  CreateGameDto,
   ChatMessageDto,
 } from './dto/socket-events.dto';
 import { CheckTimeDto } from './dto/check-time.dto';
