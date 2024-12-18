@@ -42,16 +42,17 @@ export class AuthService {
     return user[0];
   }
 
-  async login(user: any) {
+  async generateToken(user: typeof users.$inferSelect) {
     const payload: JwtPayload = {
-      sub: user.id,
+      sub: user.id as unknown as string,
       email: user.email,
       role: user.role,
     };
+    return { access_token: await this.jwtService.signAsync(payload) };
+  }
 
-    return {
-      access_token: this.jwtService.sign(payload),
-    };
+  async login(user: any) {
+    return this.generateToken(user);
   }
 
   async register(userData: RegisterDto) {
