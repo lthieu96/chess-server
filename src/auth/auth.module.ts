@@ -25,7 +25,6 @@ import { GoogleService } from './social/google.service';
     AuthService,
     LocalStrategy,
     JwtStrategy,
-
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
