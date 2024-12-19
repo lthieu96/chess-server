@@ -3,14 +3,12 @@ import {
   Get,
   Param,
   Post,
-  UseGuards,
   Body,
   HttpException,
   HttpStatus,
 } from '@nestjs/common';
 import { GameService } from './game.service';
 import { ActiveUser } from 'src/auth/guards/active-user.guard';
-import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { MoveDto } from './dto/move.dto';
 import { CreateGameDto } from './dto/create-game.dto';
 import { GameDto } from './dto/game.dto';
@@ -18,7 +16,6 @@ import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 
 @ApiTags('games')
 @Controller('games')
-@UseGuards(JwtAuthGuard)
 export class GameController {
   constructor(private readonly gameService: GameService) {}
 
@@ -75,6 +72,12 @@ export class GameController {
     } catch (error) {
       throw new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
     }
+  }
+
+  @Get('completed')
+  async getCompletedGames(@ActiveUser('sub') userId: number) {
+    console.log(userId);
+    return this.gameService.getCompletedGamesForUser(userId);
   }
 
   @Get(':id')

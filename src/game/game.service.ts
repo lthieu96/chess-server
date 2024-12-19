@@ -317,10 +317,6 @@ export class GameService implements OnApplicationShutdown {
       throw new Error('Game is not active');
     }
 
-    if (game.whitePlayerId !== userId && game.blackPlayerId !== userId) {
-      throw new Error('User is not a player in this game');
-    }
-
     const offeringUserId = this.drawOffers.get(gameId);
     if (!offeringUserId || offeringUserId === userId) {
       throw new Error('No valid draw offer to respond to');
@@ -399,6 +395,42 @@ export class GameService implements OnApplicationShutdown {
     }
 
     return game;
+  }
+
+  async getCompletedGamesForUser(userId: number) {
+    const completedGames = await this.drizzleService.db
+      .select({
+        id: games.id,
+        status: games.status,
+        whitePlayerId: games.whitePlayerId,
+        blackPlayerId: games.blackPlayerId,
+        winner: games.winner,
+        isCheckmate: games.isCheckmate,
+        isDraw: games.isDraw,
+        moves: games.moves,
+        createdAt: games.createdAt,
+        whitePlayer: {
+          id: users.id,
+          username: users.username,
+          rating: users.rating,
+        },
+        blackPlayer: {
+          id: users.id,
+          username: users.username,
+          rating: users.rating,
+        },
+      })
+      .from(games)
+      .leftJoin(users, eq(games.whitePlayerId, users.id))
+      .where(
+        and(
+          eq(games.status, 'completed'),
+          or(eq(games.whitePlayerId, userId), eq(games.blackPlayerId, userId)),
+        ),
+      )
+      .orderBy(games.createdAt);
+
+    return completedGames;
   }
 
   async handleDisconnect(userId: number) {
