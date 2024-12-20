@@ -76,7 +76,6 @@ export class GameController {
 
   @Get('completed')
   async getCompletedGames(@ActiveUser('sub') userId: number) {
-    console.log(userId);
     return this.gameService.getCompletedGamesForUser(userId);
   }
 

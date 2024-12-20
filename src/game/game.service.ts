@@ -1,6 +1,6 @@
 import { Injectable, OnApplicationShutdown } from '@nestjs/common';
 import { Chess } from 'chess.js';
-import { eq, and, or } from 'drizzle-orm';
+import { eq, and, or, desc, aliasedTable } from 'drizzle-orm';
 import { DrizzleService } from 'src/database/drizzle.service';
 import { games, users } from 'src/database/schema';
 
@@ -398,6 +398,10 @@ export class GameService implements OnApplicationShutdown {
   }
 
   async getCompletedGamesForUser(userId: number) {
+    // Create aliases for white and black player tables
+    const whitePlayer = aliasedTable(users, 'white_player');
+    const blackPlayer = aliasedTable(users, 'black_player');
+
     const completedGames = await this.drizzleService.db
       .select({
         id: games.id,
@@ -410,25 +414,26 @@ export class GameService implements OnApplicationShutdown {
         moves: games.moves,
         createdAt: games.createdAt,
         whitePlayer: {
-          id: users.id,
-          username: users.username,
-          rating: users.rating,
+          id: whitePlayer.id,
+          username: whitePlayer.username,
+          rating: whitePlayer.rating,
         },
         blackPlayer: {
-          id: users.id,
-          username: users.username,
-          rating: users.rating,
+          id: blackPlayer.id,
+          username: blackPlayer.username,
+          rating: blackPlayer.rating,
         },
       })
       .from(games)
-      .leftJoin(users, eq(games.whitePlayerId, users.id))
+      .leftJoin(whitePlayer, eq(games.whitePlayerId, whitePlayer.id))
+      .leftJoin(blackPlayer, eq(games.blackPlayerId, blackPlayer.id))
       .where(
         and(
           eq(games.status, 'completed'),
           or(eq(games.whitePlayerId, userId), eq(games.blackPlayerId, userId)),
         ),
       )
-      .orderBy(games.createdAt);
+      .orderBy(desc(games.createdAt));
 
     return completedGames;
   }
