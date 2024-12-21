@@ -64,6 +64,20 @@
       "when": 1734243643666,
       "tag": "0009_migrate-moves-game",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1734792361515,
+      "tag": "0010_add-completed-puzzle",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1734796099535,
+      "tag": "0011_make-completed-puzzle-id-string",
+      "breakpoints": true
     }
   ]
 }

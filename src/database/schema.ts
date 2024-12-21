@@ -48,7 +48,15 @@ export const games = pgTable('games', {
   updatedAt: timestamp('updated_at').defaultNow(),
 });
 
+export const completedPuzzles = pgTable('completed_puzzles', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').notNull(),
+  puzzleId: text('puzzle_id').notNull(),
+  completedAt: timestamp('completed_at').defaultNow(),
+});
+
 export const databaseSchema = {
   users,
   games,
+  completedPuzzles,
 };
