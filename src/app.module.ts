@@ -6,6 +6,7 @@ import { AuthModule } from './auth/auth.module';
 import { GameModule } from './game/game.module';
 import { SupabaseModule } from 'nestjs-supabase-js';
 import { PuzzleModule } from './puzzle/puzzle.module';
+import { BlogPostsModule } from './blog-posts/blog-posts.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { PuzzleModule } from './puzzle/puzzle.module';
     AuthModule,
     GameModule,
     PuzzleModule,
+    BlogPostsModule,
   ],
   controllers: [],
   providers: [],

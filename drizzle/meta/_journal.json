@@ -85,6 +85,13 @@
       "when": 1734886972740,
       "tag": "0012_add-blocked-to-user",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1734890724275,
+      "tag": "0013_add-blog-posts",
+      "breakpoints": true
     }
   ]
 }

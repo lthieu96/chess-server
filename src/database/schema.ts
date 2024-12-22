@@ -14,6 +14,10 @@ export const gameStatusEnum = pgEnum('game_status', [
   'active',
   'completed',
 ]);
+export const blogPostStatusEnum = pgEnum('blog_post_status', [
+  'draft',
+  'published',
+]);
 
 export const users = pgTable('users', {
   id: serial('id').primaryKey(),
@@ -25,6 +29,15 @@ export const users = pgTable('users', {
   lastActive: timestamp('last_active').defaultNow(),
   password: text('password'),
   blocked: boolean('blocked').default(false),
+});
+
+export const blogPosts = pgTable('blog_posts', {
+  id: serial('id').primaryKey(),
+  title: text('title').notNull(),
+  content: text('content').notNull(),
+  status: blogPostStatusEnum('status').default('draft'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
 });
 
 export const games = pgTable('games', {
@@ -60,4 +73,5 @@ export const databaseSchema = {
   users,
   games,
   completedPuzzles,
+  blogPosts,
 };
