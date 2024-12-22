@@ -12,6 +12,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { Public } from './guards/public.guard';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { ActiveUser } from './guards/active-user.guard';
+import { AdminLoginDto } from './dto/admin-login.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -28,6 +29,12 @@ export class AuthController {
   @Post('login')
   async login(@Request() req) {
     return this.authService.login(req.user);
+  }
+
+  @Public()
+  @Post('admin/login')
+  async adminLogin(@Body() adminLoginData: AdminLoginDto) {
+    return this.authService.adminLogin(adminLoginData);
   }
 
   @Post('guest')

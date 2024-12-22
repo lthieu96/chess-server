@@ -51,4 +51,14 @@ export class UsersController {
   remove(@Param('id') id: string) {
     return this.usersService.remove(+id);
   }
+
+  @Post(':id/block')
+  blockUser(@Param('id') id: string, @ActiveUser('sub') adminId: number) {
+    return this.usersService.blockUser(+id, adminId);
+  }
+
+  @Post(':id/unblock')
+  unblockUser(@Param('id') id: string, @ActiveUser('sub') adminId: number) {
+    return this.usersService.unblockUser(+id, adminId);
+  }
 }

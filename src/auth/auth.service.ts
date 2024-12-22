@@ -34,6 +34,10 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
+    if (user[0].blocked) {
+      throw new UnauthorizedException('Your account has been blocked');
+    }
+
     const isPasswordValid = await bcrypt.compare(password, user[0].password!);
     if (!isPasswordValid) {
       throw new UnauthorizedException('Invalid credentials');
@@ -116,5 +120,79 @@ export class AuthService {
     }
 
     return user;
+  }
+
+  async validateAdmin(emailOrUsername: string, password: string) {
+    const user = await this.drizzleService.db
+      .select()
+      .from(users)
+      .where(
+        or(
+          eq(users.email, emailOrUsername),
+          eq(users.username, emailOrUsername),
+        ),
+      )
+      .limit(1);
+
+    if (!user[0] || user[0].role !== 'admin') {
+      throw new UnauthorizedException('Invalid admin credentials');
+    }
+
+    if (user[0].blocked) {
+      throw new UnauthorizedException('Your account has been blocked');
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, user[0].password!);
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Invalid admin credentials');
+    }
+
+    return user[0];
+  }
+
+  async adminLogin(adminLoginData: {
+    emailOrUsername: string;
+    password: string;
+  }) {
+    const admin = await this.validateAdmin(
+      adminLoginData.emailOrUsername,
+      adminLoginData.password,
+    );
+    return this.generateToken(admin);
+  }
+
+  async createAdmin(adminData: {
+    username: string;
+    email: string;
+    password: string;
+  }) {
+    const existingUser = await this.drizzleService.db
+      .select()
+      .from(users)
+      .where(
+        or(
+          eq(users.email, adminData.email),
+          eq(users.username, adminData.username),
+        ),
+      )
+      .limit(1);
+
+    if (existingUser[0]) {
+      throw new ConflictException('Username or email already exists');
+    }
+
+    const hashedPassword = await bcrypt.hash(adminData.password, 10);
+
+    const [newAdmin] = await this.drizzleService.db
+      .insert(users)
+      .values({
+        username: adminData.username,
+        email: adminData.email,
+        password: hashedPassword,
+        role: 'admin',
+      })
+      .returning();
+
+    return newAdmin;
   }
 }

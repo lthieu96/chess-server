@@ -78,6 +78,13 @@
       "when": 1734796099535,
       "tag": "0011_make-completed-puzzle-id-string",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1734886972740,
+      "tag": "0012_add-blocked-to-user",
+      "breakpoints": true
     }
   ]
 }

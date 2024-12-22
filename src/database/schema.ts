@@ -24,6 +24,7 @@ export const users = pgTable('users', {
   createdAt: timestamp('created_at').defaultNow(),
   lastActive: timestamp('last_active').defaultNow(),
   password: text('password'),
+  blocked: boolean('blocked').default(false),
 });
 
 export const games = pgTable('games', {

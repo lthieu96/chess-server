@@ -80,6 +80,46 @@ export class UsersService {
     }
   }
 
+  async blockUser(id: number, adminId: number) {
+    const userToBlock = await this.findOne(id);
+    const admin = await this.findOne(adminId);
+
+    if (admin.role !== 'admin') {
+      throw new BadRequestException('Only admins can block users');
+    }
+
+    if (userToBlock.role === 'admin') {
+      throw new BadRequestException('Cannot block admin users');
+    }
+
+    await this.drizzleService.db
+      .update(users)
+      .set({ blocked: true })
+      .where(eq(users.id, id));
+
+    return this.findOne(id);
+  }
+
+  async unblockUser(id: number, adminId: number) {
+    const admin = await this.findOne(adminId);
+
+    if (admin.role !== 'admin') {
+      throw new BadRequestException('Only admins can unblock users');
+    }
+
+    await this.drizzleService.db
+      .update(users)
+      .set({ blocked: false })
+      .where(eq(users.id, id));
+
+    return this.findOne(id);
+  }
+
+  async isBlocked(id: number): Promise<boolean> {
+    const user = await this.findOne(id);
+    return user.blocked!;
+  }
+
   remove(id: number) {
     return `This action removes a #${id} user`;
   }
