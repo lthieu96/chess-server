@@ -20,7 +20,7 @@ export class UsersService {
   }
 
   findAll() {
-    return this.drizzleService.db.select().from(users);
+    return this.drizzleService.db.select().from(users).orderBy(users.id);
   }
 
   async findOne(id: number) {
