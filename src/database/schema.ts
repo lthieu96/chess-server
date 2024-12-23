@@ -69,9 +69,50 @@ export const completedPuzzles = pgTable('completed_puzzles', {
   completedAt: timestamp('completed_at').defaultNow(),
 });
 
+export const blogPostLikes = pgTable('blog_post_likes', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  postId: integer('post_id')
+    .notNull()
+    .references(() => blogPosts.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+export const comments = pgTable('comments', {
+  id: serial('id').primaryKey(),
+  content: text('content').notNull(),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  postId: integer('post_id')
+    .notNull()
+    .references(() => blogPosts.id, { onDelete: 'cascade' }),
+  parentId: integer('parent_id').references(() => comments.id, {
+    onDelete: 'cascade',
+  }),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+export const commentLikes = pgTable('comment_likes', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  commentId: integer('comment_id')
+    .notNull()
+    .references(() => comments.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
 export const databaseSchema = {
   users,
   games,
   completedPuzzles,
   blogPosts,
+  blogPostLikes,
+  comments,
+  commentLikes,
 };
