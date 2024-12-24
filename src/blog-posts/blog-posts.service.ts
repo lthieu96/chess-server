@@ -29,8 +29,8 @@ export class BlogPostsService {
     const posts = await this.drizzle.db
       .select({
         post: blogPosts,
-        likesCount: sql<number>`count(${blogPostLikes.id})::int`,
-        commentsCount: sql<number>`count(${comments.id})::int`,
+        likesCount: sql`count(${blogPostLikes.id})::int`,
+        commentsCount: sql`count(${comments.id})::int`,
       })
       .from(blogPosts)
       .leftJoin(blogPostLikes, eq(blogPosts.id, blogPostLikes.postId))
@@ -45,8 +45,8 @@ export class BlogPostsService {
     const posts = await this.drizzle.db
       .select({
         post: blogPosts,
-        likesCount: sql<number>`count(${blogPostLikes.id})::int`,
-        commentsCount: sql<number>`count(${comments.id})::int`,
+        likesCount: sql`count(${blogPostLikes.id})::int`,
+        commentsCount: sql`count(${comments.id})::int`,
       })
       .from(blogPosts)
       .leftJoin(blogPostLikes, eq(blogPosts.id, blogPostLikes.postId))
@@ -62,8 +62,8 @@ export class BlogPostsService {
     const posts = await this.drizzle.db
       .select({
         post: blogPosts,
-        likesCount: sql<number>`count(${blogPostLikes.id})::int`,
-        commentsCount: sql<number>`count(${comments.id})::int`,
+        likesCount: sql`count(${blogPostLikes.id})::int`,
+        commentsCount: sql`count(${comments.id})::int`,
       })
       .from(blogPosts)
       .leftJoin(blogPostLikes, eq(blogPosts.id, blogPostLikes.postId))
@@ -78,12 +78,22 @@ export class BlogPostsService {
     return post;
   }
 
-  async findOnePublished(id: number) {
+  async findOnePublished(id: number, currentUserId?: number) {
     const posts = await this.drizzle.db
       .select({
         post: blogPosts,
-        likesCount: sql<number>`count(${blogPostLikes.id})::int`,
-        commentsCount: sql<number>`count(${comments.id})::int`,
+        likesCount: sql<number>`COUNT(DISTINCT ${blogPostLikes.id})::int`,
+        commentsCount: sql<number>`COUNT(DISTINCT ${comments.id})::int`,
+        liked: currentUserId
+          ? sql<boolean>`
+          EXISTS (
+            SELECT 1 
+            FROM ${blogPostLikes} likes
+            WHERE likes.post_id = ${blogPosts.id}
+            AND likes.user_id = ${currentUserId}
+          )
+        `
+          : sql<boolean>`false`,
       })
       .from(blogPosts)
       .leftJoin(blogPostLikes, eq(blogPosts.id, blogPostLikes.postId))
@@ -224,24 +234,28 @@ export class BlogPostsService {
     return { liked: true };
   }
 
-  async getComments(postId: number) {
+  async getComments(postId: number, currentUserId: number) {
     // Verify post exists and is published
     await this.findOnePublished(postId);
 
     const result = await this.drizzle.db
       .select({
-        comment: {
-          id: comments.id,
-          content: comments.content,
-          createdAt: comments.createdAt,
-          updatedAt: comments.updatedAt,
-          parentId: comments.parentId,
-        },
+        comment: comments,
         author: {
           id: users.id,
           username: users.username,
         },
-        likesCount: sql<number>`count(${commentLikes.id})::int`,
+        likesCount: sql`count(${commentLikes.id})::int`,
+        liked: currentUserId
+          ? sql<boolean>`
+          EXISTS (
+            SELECT 1 
+            FROM ${commentLikes} likes
+            WHERE likes.comment_id = ${comments.id}
+            AND likes.user_id = ${currentUserId}
+          )
+        `
+          : sql<boolean>`false`,
       })
       .from(comments)
       .leftJoin(users, eq(comments.userId, users.id))
@@ -259,6 +273,7 @@ export class BlogPostsService {
         ...item.comment,
         author: item.author,
         likesCount: item.likesCount,
+        liked: item.liked,
         replies: [],
       };
       commentMap.set(comment.id, comment);

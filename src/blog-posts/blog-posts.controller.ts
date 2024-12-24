@@ -37,7 +37,6 @@ export class BlogPostsController {
   }
 
   @Get('published')
-  @Public()
   findAllPublished() {
     return this.blogPostsService.findAllPublished();
   }
@@ -49,9 +48,11 @@ export class BlogPostsController {
   }
 
   @Get('published/:id')
-  @Public()
-  findOnePublished(@Param('id') id: string) {
-    return this.blogPostsService.findOnePublished(+id);
+  findOnePublished(
+    @Param('id') id: string,
+    @ActiveUser('sub') userId?: number,
+  ) {
+    return this.blogPostsService.findOnePublished(+id, userId);
   }
 
   @Patch(':id')
@@ -95,8 +96,11 @@ export class BlogPostsController {
   }
 
   @Get(':id/comments')
-  getComments(@Param('id', ParseIntPipe) id: number) {
-    return this.blogPostsService.getComments(id);
+  getComments(
+    @Param('id', ParseIntPipe) id: number,
+    @ActiveUser('sub') userId: number,
+  ) {
+    return this.blogPostsService.getComments(id, userId);
   }
 
   @Patch('comments/:id')
