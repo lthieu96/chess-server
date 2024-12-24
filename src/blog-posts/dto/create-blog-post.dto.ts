@@ -9,7 +9,13 @@ export class CreateBlogPostDto {
   @IsNotEmpty()
   content: string;
 
+  @IsString()
   @IsOptional()
-  @IsEnum(['draft', 'published'], { message: 'Status must be either draft or published' })
+  thumbnail?: string;
+
+  @IsOptional()
+  @IsEnum(['draft', 'published'], {
+    message: 'Status must be either draft or published',
+  })
   status?: 'draft' | 'published' = 'draft';
 }

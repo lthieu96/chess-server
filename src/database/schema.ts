@@ -35,6 +35,7 @@ export const blogPosts = pgTable('blog_posts', {
   id: serial('id').primaryKey(),
   title: text('title').notNull(),
   content: text('content').notNull(),
+  thumbnail: text('thumbnail'),
   status: blogPostStatusEnum('status').default('draft'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),

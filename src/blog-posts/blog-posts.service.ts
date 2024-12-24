@@ -27,15 +27,8 @@ export class BlogPostsService {
 
   async findAll() {
     const posts = await this.drizzle.db
-      .select({
-        post: blogPosts,
-        likesCount: sql`count(${blogPostLikes.id})::int`,
-        commentsCount: sql`count(${comments.id})::int`,
-      })
+      .select()
       .from(blogPosts)
-      .leftJoin(blogPostLikes, eq(blogPosts.id, blogPostLikes.postId))
-      .leftJoin(comments, eq(blogPosts.id, comments.postId))
-      .groupBy(blogPosts.id)
       .orderBy(desc(blogPosts.createdAt));
 
     return posts;
@@ -59,23 +52,15 @@ export class BlogPostsService {
   }
 
   async findOne(id: number) {
-    const posts = await this.drizzle.db
-      .select({
-        post: blogPosts,
-        likesCount: sql`count(${blogPostLikes.id})::int`,
-        commentsCount: sql`count(${comments.id})::int`,
-      })
+    const post = await this.drizzle.db
+      .select()
       .from(blogPosts)
-      .leftJoin(blogPostLikes, eq(blogPosts.id, blogPostLikes.postId))
-      .leftJoin(comments, eq(blogPosts.id, comments.postId))
-      .where(eq(blogPosts.id, id))
-      .groupBy(blogPosts.id);
+      .where(eq(blogPosts.id, id));
 
-    const post = posts[0];
     if (!post) {
       throw new NotFoundException(`Blog post #${id} not found`);
     }
-    return post;
+    return post[0];
   }
 
   async findOnePublished(id: number, currentUserId?: number) {
