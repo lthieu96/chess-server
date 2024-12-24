@@ -38,8 +38,8 @@ export class BlogPostsService {
     const posts = await this.drizzle.db
       .select({
         post: blogPosts,
-        likesCount: sql`count(${blogPostLikes.id})::int`,
-        commentsCount: sql`count(${comments.id})::int`,
+        likesCount: sql<number>`COUNT(DISTINCT ${blogPostLikes.id})::int`,
+        commentsCount: sql<number>`COUNT(DISTINCT ${comments.id})::int`,
       })
       .from(blogPosts)
       .leftJoin(blogPostLikes, eq(blogPosts.id, blogPostLikes.postId))
