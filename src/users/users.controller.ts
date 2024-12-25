@@ -33,17 +33,24 @@ export class UsersController {
     return this.usersService.findOne(+id);
   }
 
-  @Roles('user')
+  @Roles('user', 'admin')
   @Patch(':id')
   update(
     @Param('id') id: string,
     @Body() updateUserDto: UpdateUserDto,
     @ActiveUser('sub') userId: number,
+    @ActiveUser('role') userRole: string,
   ) {
-    console.log(userId);
-    if (userId !== +id) {
+    // Only admins can update roles
+    if (updateUserDto.role && userRole !== 'admin') {
+      throw new Error('Only admins can update user roles');
+    }
+
+    // Regular users can only update their own info
+    if (userRole !== 'admin' && userId !== +id) {
       throw new Error('You can only update your own user');
     }
+
     return this.usersService.update(+id, updateUserDto);
   }
 

@@ -39,10 +39,10 @@ export class UsersService {
   }
 
   async update(id: number, updateUserDto: UpdateUserDto) {
-    const { username, password } = updateUserDto;
+    const { username, password, role } = updateUserDto;
 
     // Validate that at least one field is being updated
-    if (!username && !password) {
+    if (!username && !password && !role) {
       throw new BadRequestException(
         'At least one field must be provided for update',
       );
@@ -52,6 +52,7 @@ export class UsersService {
       const updateData = {
         ...(username && { username }),
         ...(password && { password: await hash(password, 10) }),
+        ...(role && { role }),
       };
 
       const updatedUsers = await this.drizzleService.db
@@ -60,6 +61,8 @@ export class UsersService {
         .where(eq(users.id, id))
         .returning({
           id: users.id,
+          username: users.username,
+          role: users.role,
         });
 
       const user = updatedUsers[0];
