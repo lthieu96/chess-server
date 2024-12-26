@@ -1,44 +1,58 @@
-## Environment Variables
+## Pre-requisites
 
-- duplicate the file `.env.example` and rename to `.env`
-- update the values of the environment variables
+- Node.js
+- Yarn
+- PostgreSQL (local or cloud)
+- Google OAuth 2.0 credentials
 
-## Install dependencies
+## Installation
 
-```bash
-yarn install
-```
+1. Clone the repository
 
-## Setup Database
+   ```bash
+   git clone https://github.com/lthieu96/chess-server.git
+   cd chess-server
+   ```
 
-```bash
-yarn db:migrate
-```
+2. Environment Variables
 
-- Open the database studio
+   - Duplicate the file `.env.example` and rename to `.env`
+   - Update the values of the environment variables
 
-```bash
-yarn db:studio
-```
+3. Install dependencies
 
-## Run the application
+   ```bash
+   yarn install
+   ```
 
-```bash
-yarn start:dev
-```
+4. Setup Database
 
-## Create a admin user
+   ```bash
+   yarn db:migrate
+   ```
+
+- (Optional) Open the database studio
+
+  ```bash
+  yarn db:studio
+  ```
+
+5. Run the application
+
+   ```bash
+   yarn start:dev
+   ```
+
+6. Create a admin user (for admin dashboard)
 
 - Run app in repl mode
 
-```bash
-yarn start:dev --entryFile repl
-```
+  ```bash
+  yarn start:dev --entryFile repl
+  ```
 
-- Create a user
+- Create a admin user
 
-```bash
-$(AuthService).createAdmin({ username: 'admin', email: 'admin@example.com', password: 'password123' })
-```
-
-## Seed the database
+  ```bash
+  $(AuthService).createAdmin({ username: 'admin', email: 'admin@example.com', password: 'password123' })
+  ```
