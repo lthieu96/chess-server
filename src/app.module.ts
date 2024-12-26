@@ -7,11 +7,23 @@ import { GameModule } from './game/game.module';
 import { SupabaseModule } from 'nestjs-supabase-js';
 import { PuzzleModule } from './puzzle/puzzle.module';
 import { BlogPostsModule } from './blog-posts/blog-posts.module';
+import { LoggerModule } from 'nestjs-pino';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+    }),
+    LoggerModule.forRoot({
+      pinoHttp: {
+        transport: {
+          target: 'pino-pretty',
+          options: {
+            singleLine: true,
+            colorize: true,
+          },
+        },
+      },
     }),
     SupabaseModule.forRoot({
       supabaseKey: process.env.SUPABASE_KEY!,
