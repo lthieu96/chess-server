@@ -24,11 +24,9 @@ export class GoogleService implements OnModuleInit {
 
   async authenticate(token: string) {
     try {
-      const ticket = await this.oauthClient.verifyIdToken({
-        idToken: token,
-      });
+      const tokenInfo = await this.oauthClient.getTokenInfo(token);
 
-      const { email } = ticket.getPayload()!;
+      const { email } = tokenInfo;
 
       let dbUsers = await this.drizzleService.db
         .select()
