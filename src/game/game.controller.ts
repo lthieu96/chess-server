@@ -92,4 +92,9 @@ export class GameController {
       throw new HttpException(error.message, HttpStatus.NOT_FOUND);
     }
   }
+
+  @Get(':id/players')
+  async getPlayers(@Param('id') id: number) {
+    return this.gameService.getPlayersInGame(id);
+  }
 }

@@ -1,6 +1,6 @@
 import { Injectable, OnApplicationShutdown } from '@nestjs/common';
 import { Chess } from 'chess.js';
-import { eq, and, or, desc, aliasedTable } from 'drizzle-orm';
+import { eq, and, or, desc, aliasedTable, inArray } from 'drizzle-orm';
 import { DrizzleService } from 'src/database/drizzle.service';
 import { games, users } from 'src/database/schema';
 
@@ -395,6 +395,29 @@ export class GameService implements OnApplicationShutdown {
     }
 
     return game;
+  }
+
+  async getPlayersInGame(gameId: number) {
+    const game = await this.drizzleService.db.query.games.findFirst({
+      where: eq(games.id, gameId),
+    });
+
+    if (!game) {
+      throw new Error('Game not found');
+    }
+
+    const whitePlayer = game.whitePlayerId
+      ? await this.drizzleService.db.query.users.findFirst({
+          where: eq(users.id, game.whitePlayerId),
+        })
+      : null;
+
+    const blackPlayer = game.blackPlayerId
+      ? await this.drizzleService.db.query.users.findFirst({
+          where: eq(users.id, game.blackPlayerId),
+        })
+      : null;
+    return { whitePlayer, blackPlayer };
   }
 
   async getCompletedGamesForUser(userId: number) {
