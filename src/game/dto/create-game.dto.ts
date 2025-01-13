@@ -27,4 +27,12 @@ export class CreateGameDto {
   @Min(0) // No increment is allowed
   @Max(60) // Maximum 1 minute increment
   increment?: number;
+
+  @ApiProperty({
+    description: 'Whether the game is private (default: false)',
+    default: false,
+    required: false,
+  })
+  @IsOptional()
+  isPrivate?: boolean;
 }
