@@ -4,14 +4,14 @@ import { IsNumber, IsOptional, Min, Max } from 'class-validator';
 export class CreateGameDto {
   @ApiProperty({
     description: 'Time control in seconds (default: 600 - 10 minutes)',
-    minimum: 60,
+    minimum: 30,
     maximum: 7200,
     default: 600,
     required: false,
   })
   @IsNumber()
   @IsOptional()
-  @Min(60) // Minimum 1 minute
+  @Min(30) // Minimum 1 minute
   @Max(7200) // Maximum 2 hours
   timeControl?: number;
 

@@ -81,6 +81,8 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
           if (result) {
             const { game, type } = result;
 
+            this.server.to(game.id.toString()).emit('gameState', game);
+
             // Notify players about game over due to disconnect
             this.server.to(game.id.toString()).emit('gameOver', {
               winner: game.winner,
@@ -183,6 +185,11 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ) {
     try {
       const gameState = await this.gameService.checkTime(checkTimeDto.gameId);
+
+      // Emit game state to all players in the room
+      this.server
+        .to(checkTimeDto.gameId.toString())
+        .emit('gameState', gameState);
 
       // If time has expired, notify all players
       if (gameState.timeExpired) {
