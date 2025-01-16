@@ -214,15 +214,16 @@ export class GameService implements OnApplicationShutdown {
       game.whitePlayerId == userId ? game.blackPlayerId : game.whitePlayerId;
 
     // Update the game status to completed
-    await this.drizzleService.db
+    const updatedGames = await this.drizzleService.db
       .update(games)
       .set({
         status: 'completed',
         winner: winnerId,
       })
-      .where(eq(games.id, gameId));
+      .where(eq(games.id, gameId))
+      .returning();
 
-    return { winner: winnerId };
+    return updatedGames[0];
   }
 
   async checkTime(gameId: number) {

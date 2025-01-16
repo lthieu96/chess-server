@@ -11,7 +11,7 @@ export class CreateGameDto {
   })
   @IsNumber()
   @IsOptional()
-  @Min(30) // Minimum 1 minute
+  @Min(15) // Minimum 1 minute
   @Max(7200) // Maximum 2 hours
   timeControl?: number;
 

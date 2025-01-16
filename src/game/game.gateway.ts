@@ -74,22 +74,22 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
           this.userSockets.delete(client.data.userId);
 
           // Handle game disconnection
-          const result = await this.gameService.handleDisconnect(
-            client.data.userId,
-          );
+          // const result = await this.gameService.handleDisconnect(
+          //   client.data.userId,
+          // );
 
-          if (result) {
-            const { game, type } = result;
+          // if (result) {
+          //   const { game, type } = result;
 
-            this.server.to(game.id.toString()).emit('gameState', game);
+          //   this.server.to(game.id.toString()).emit('gameState', game);
 
-            // Notify players about game over due to disconnect
-            this.server.to(game.id.toString()).emit('gameOver', {
-              winner: game.winner,
-              reason: 'Player disconnected',
-              finalState: game,
-            });
-          }
+          //   // Notify players about game over due to disconnect
+          //   this.server.to(game.id.toString()).emit('gameOver', {
+          //     winner: game.winner,
+          //     reason: 'Player disconnected',
+          //     finalState: game,
+          //   });
+          // }
         }
       }
     }
@@ -166,6 +166,8 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
         resignGameDto.gameId,
         client.data.userId,
       );
+
+      this.server.to(resignGameDto.gameId.toString()).emit('gameState', game);
       this.server.to(resignGameDto.gameId.toString()).emit('gameOver', {
         winner: game.winner,
         reason: 'Player resigned',
