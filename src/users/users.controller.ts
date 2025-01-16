@@ -10,6 +10,7 @@ import {
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { UpdatePasswordDto } from './dto/update-password.dto';
 import { Roles } from '@/auth/decorators/roles.decorator';
 import { ActiveUser } from '@/auth/guards/active-user.guard';
 
@@ -52,6 +53,21 @@ export class UsersController {
     }
 
     return this.usersService.update(+id, updateUserDto);
+  }
+
+  @Roles('user', 'admin')
+  @Patch(':id/password')
+  updatePassword(
+    @Param('id') id: string,
+    @Body() updatePasswordDto: UpdatePasswordDto,
+    @ActiveUser('sub') userId: number,
+    @ActiveUser('role') userRole: string,
+  ) {
+    // Regular users can only update their own password
+    if (userRole !== 'admin' && userId !== +id) {
+      throw new Error('You can only update your own password');
+    }
+    return this.usersService.updatePassword(+id, updatePasswordDto);
   }
 
   @Delete(':id')

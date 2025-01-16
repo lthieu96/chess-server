@@ -5,12 +5,14 @@ import {
   BadRequestException,
   ConflictException,
   InternalServerErrorException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { UpdatePasswordDto } from './dto/update-password.dto';
 import { users } from 'src/database/schema';
 import { eq, getTableColumns } from 'drizzle-orm';
-import { hash } from 'bcrypt';
+import { hash, compare } from 'bcrypt';
 
 @Injectable()
 export class UsersService {
@@ -145,5 +147,40 @@ export class UsersService {
     }
 
     return player;
+  }
+
+  async updatePassword(id: number, updatePasswordDto: UpdatePasswordDto) {
+    const user = await this.findOne(id);
+
+    // If user has a password and oldPassword is provided, verify it
+    if (user.password && updatePasswordDto.oldPassword) {
+      const isPasswordValid = await compare(
+        updatePasswordDto.oldPassword,
+        user.password,
+      );
+      if (!isPasswordValid) {
+        throw new UnauthorizedException('Invalid old password');
+      }
+    }
+
+    // If user has a password but oldPassword is not provided
+    if (user.password && !updatePasswordDto.oldPassword) {
+      throw new BadRequestException('Old password is required');
+    }
+
+    // Hash the new password
+    const hashedPassword = await hash(updatePasswordDto.newPassword, 10);
+
+    // Update the password
+    try {
+      await this.drizzleService.db
+        .update(users)
+        .set({ password: hashedPassword })
+        .where(eq(users.id, id));
+
+      return { message: 'Password updated successfully' };
+    } catch (error) {
+      throw new InternalServerErrorException('Failed to update password');
+    }
   }
 }

@@ -267,9 +267,15 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
         };
         this.server
           .to(drawResponseDto.gameId.toString())
+          .emit('gameState', game);
+        this.server
+          .to(drawResponseDto.gameId.toString())
           .emit('gameOver', gameOverEvent);
       } else {
         // If draw was declined, notify players
+        this.server
+          .to(drawResponseDto.gameId.toString())
+          .emit('gameState', game);
         this.server.to(drawResponseDto.gameId.toString()).emit('drawDeclined', {
           gameId: game.id,
           declinedBy: client.data.userId,
